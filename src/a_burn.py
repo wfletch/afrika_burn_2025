@@ -25,7 +25,15 @@ NEOPIXEL_REGION_3_NUM_LEDS = 32
 I2C_CHANNEL_1_SCL_PIN = 1
 I2C_CHANNEL_1_SDA_PIN = 0
 i2c = I2C(0, scl=Pin(I2C_CHANNEL_1_SCL_PIN), sda=Pin(I2C_CHANNEL_1_SDA_PIN))
+# Missle Switches
+MISSLE_SWITCH_1_PIN = 3
+MISSLE_SWITCH_2_PIN = 4
 
+# Logical 
+ACTIVE_PATTERN = 0
+SLEEP_TIME_MS = 1000 
+CUR_CYCLE_COUNT = 0
+GLOBAL_COLOR = "#FF0000"
 class PCA9685():
     def __init__(self, i2c_device, addr):
         self.i2c =  i2c_device
@@ -111,17 +119,31 @@ all_neopixel = [neopixel_region_1, neopixel_region_2, neopixel_region_3]
 for n in all_neopixel:
     n.set_debug_mode()
 
-import sys
-sys.exit(1)
-PCA_1 = PCA9685(i2c, PCA9685_ADDR_1)
-PCA_2 = PCA9685(i2c, PCA9685_ADDR_2)
-PCA_3 = PCA9685(i2c, PCA9685_ADDR_3)
-PCA_4 = PCA9685(i2c, PCA9685_ADDR_4)
-rgb_leds_set_1 = [RGBLed(PCA_1  , i,i+1,i+2) for i in range(0,14,3)]    
-rgb_leds_set_2 = [RGBLed(PCA_2  , i,i+1,i+2) for i in range(0,14,3)]    
-rgb_leds_set_3 = [RGBLed(PCA_3  , i,i+1,i+2) for i in range(0,14,3)]    
-rgb_leds_set_4 = [RGBLed(PCA_4  , i,i+1,i+2) for i in range(0,14,3)]    
-all_rgb_leds = [rgb_leds_set_1, rgb_leds_set_2, rgb_leds_set_3, rgb_leds_set_4] 
-for led_set in all_rgb_leds:
-    for l in led_set:
-        l.set_rgba("#FFB6C1", 1)
+def trigger_switch_irq_missle_1(pin : Pin):
+    global SLEEP_TIME_MS
+    if pin.value() == 0:
+        SLEEP_TIME_MS = 100 
+    if pin.value() == 1:
+        SLEEP_TIME_MS = 1000
+
+def trigger_switch_irq_missle_2(pin : Pin):
+    global GLOBAL_COLOR 
+    if pin.value() == 0:
+        GLOBAL_COLOR = "#00FF00"
+    if pin.value() == 1:
+        rand_r = hex(urandom.getrandbits(8))[2::]
+        rand_g = hex(urandom.getrandbits(8))[2::]
+        rand_b = hex(urandom.getrandbits(8))[2::]
+        GLOBAL_COLOR = f"#{rand_r}{rand_g}{rand_b}"
+
+trigger_switch_1 = Pin(MISSLE_SWITCH_1_PIN, Pin.IN, Pin.PULL_DOWN)
+trigger_switch_1.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=trigger_switch_irq_missle_1)
+trigger_switch_2 = Pin(MISSLE_SWITCH_2_PIN, Pin.IN, Pin.PULL_DOWN)
+trigger_switch_2.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=trigger_switch_irq_missle_2)
+
+# Main Color Loop
+
+while True:  
+    neopixel_region_1.color_lin_grad(color=GLOBAL_COLOR,offset=CUR_CYCLE_COUNT);
+    CUR_CYCLE_COUNT+=1
+    time.sleep_ms(SLEEP_TIME_MS)
