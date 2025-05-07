@@ -16,7 +16,7 @@ PCA9685_ADDR_4 =  0x43
 
 # Neopixel Constants
 NEOPIXEL_REGION_1_PIN = 5
-NEOPIXEL_REGION_1_NUM_LEDS = 32
+NEOPIXEL_REGION_1_NUM_LEDS = 50
 NEOPIXEL_REGION_2_PIN = 6
 NEOPIXEL_REGION_2_NUM_LEDS = 16 
 NEOPIXEL_REGION_3_PIN = 7
@@ -86,11 +86,27 @@ class NeoPixelStrip():
         self.pin_number = pin_number
         self.LED_count = LED_count
         self.np : neopixel.NeoPixel = neopixel.NeoPixel(Pin(self.pin_number), self.LED_count)
+    def set_color(self, r, g, b, target=-1):
+        if target == -1:
+            for i in range(self.LED_count):
+                np[i] = (r,g,b)
+        else:
+            self.np[target] = (r,g,b)
 
+
+    def set_random_color(self):
+        # Set all LEDs to a specific color 
+        for i in range(self.LED_count):
+            # rand_r = urandom.getrandbits(8)
+            rand_r = 0
+            rand_g = int(urandom.getrandbits(8) * 0.45)
+            rand_b = int(urandom.getrandbits(8) * 0.45)
+            self.np[i] = (rand_r, rand_g, rand_b)  # RGB format
+        self.np.write()
     def set_debug_mode(self):
         # Set all LEDs to purple
         for i in range(self.LED_count):
-            self.np[i] = (0xFF, 0xB6, 0xC1)  # RGB format
+            self.np[i] = (0xFF, 0xB6, 0x00)  # RGB format
         self.np.write()
 
     def color_lin_grad(self, offset=0, color="#FF0000"):
@@ -111,13 +127,11 @@ class NeoPixelStrip():
 
 
 neopixel_region_1 = NeoPixelStrip(NEOPIXEL_REGION_1_PIN, NEOPIXEL_REGION_1_NUM_LEDS)
-neopixel_region_2 = NeoPixelStrip(NEOPIXEL_REGION_2_PIN, NEOPIXEL_REGION_2_NUM_LEDS)
-neopixel_region_3 = NeoPixelStrip(NEOPIXEL_REGION_3_PIN, NEOPIXEL_REGION_3_NUM_LEDS)
 
-all_neopixel = [neopixel_region_1, neopixel_region_2, neopixel_region_3]
+all_neopixel = [neopixel_region_1]
 
 for n in all_neopixel:
-    n.set_debug_mode()
+    n.set_random_color()
 
 def trigger_switch_irq_missle_1(pin : Pin):
     global SLEEP_TIME_MS
@@ -136,14 +150,22 @@ def trigger_switch_irq_missle_2(pin : Pin):
         rand_b = hex(urandom.getrandbits(8))[2::]
         GLOBAL_COLOR = f"#{rand_r}{rand_g}{rand_b}"
 
+def turn_off_all_lights():
+    for n in all_neopixel:
+        n.set_color(r=g,g=0,b=0)
+
 trigger_switch_1 = Pin(MISSLE_SWITCH_1_PIN, Pin.IN, Pin.PULL_DOWN)
 trigger_switch_1.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=trigger_switch_irq_missle_1)
 trigger_switch_2 = Pin(MISSLE_SWITCH_2_PIN, Pin.IN, Pin.PULL_DOWN)
 trigger_switch_2.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=trigger_switch_irq_missle_2)
 
-# Main Color Loop
+while True:
+    time.sleep_ms(50)
+    for n in all_neopixel:
+        n.set_random_color()
 
-while True:  
-    neopixel_region_1.color_lin_grad(color=GLOBAL_COLOR,offset=CUR_CYCLE_COUNT);
-    CUR_CYCLE_COUNT+=1
-    time.sleep_ms(SLEEP_TIME_MS)
+# Main Color Loop
+# while True:  
+#     neopixel_region_1.color_lin_grad(color=GLOBAL_COLOR,offset=CUR_CYCLE_COUNT);
+#     CUR_CYCLE_COUNT+=1
+#     time.sleep_ms(SLEEP_TIME_MS)
